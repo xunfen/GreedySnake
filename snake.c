@@ -9,7 +9,7 @@
 #include "snake.h"
 #include "user.h"
 
-// 自定义屏幕清除函数，使用Windows API更可靠
+// 自定义屏幕清除函数，使用Windows API https://docs.pingcode.com/baike/980461
 void clearScreen()
 {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -32,7 +32,7 @@ void clearScreen()
     FillConsoleOutputAttribute(hConsole, csbi.wAttributes, dwConSize, coordScreen, &cCharsWritten);
 
     // 将光标位置设置到左上角
-    SetConsoleCursorPosition(hConsole, coordScreen);
+    SetConsoleCursorPosition(hConsole, coordScreen);//https://blog.csdn.net/baiqi123456/article/details/119753736
 }
 
 // 定义蛇的结构体->初始化蛇和食物->开始游戏(蛇和墙的碰撞，蛇和自身碰撞，蛇和食物碰撞)
@@ -41,6 +41,7 @@ int main()
     printf("=================================\n");
     printf("欢迎来到贪吃蛇游戏！\n");
     printf("请选择你要进行的操作：\n");
+    printf("0.加载游戏\n");
     printf("1.开始游戏\n");
     printf("2.查看分数\n");
     printf("3.关于我们\n");
@@ -75,11 +76,14 @@ int main()
             about();
             break;
         case '4':
-            printf("游戏规则：\n");
+            printf("\n==============游戏规则===============：\n");
             printf("1.移动：使用方向键(W上,S下,A左,D右)控制蛇的移动方向。\n");
             printf("2.吃食物(#)：吃食物可以增加蛇的长度。\n");
             printf("3.陷阱(X)：碰撞陷阱将会导致游戏失败。\n");
-            printf("祝你玩得开心！");
+            printf("4.碰撞墙壁将会导致游戏失败。\n");
+            printf("5.游戏中按住q将保存游戏数据并退出\n");
+            printf("注意：为了保证游戏公平，每轮游戏最多仅允许暂停一次，否则判断失败！！！\n");
+            printf("祝你玩得开心！\n");
             printf("按任意键继续...");
             _getch();
             clearScreen();
@@ -87,6 +91,9 @@ int main()
             break;
         case '5':
             exit(0);
+            break;
+        case '0':
+            load();
             break;
         default:
             printf("输入错误！请重新输入：");
@@ -99,6 +106,7 @@ void start()
     clearScreen();
     score = 0; // 防止上一轮分数未归零
 
+    //隐藏光标获取良好体验https://docs.pingcode.com/baike/1162036
     CONSOLE_CURSOR_INFO cci;  // 声明cci结构体
     cci.dwSize = sizeof(cci); // 设置大小
     cci.bVisible = FALSE;     // 隐藏光标
@@ -114,9 +122,9 @@ void start()
     initWall(); // 调用墙
     playGame(); // 开始玩游戏
 
-    // 清除标准输入缓冲区中的残留字符
+    // 游戏结束后依旧会有scanner在，此处清除
     int c;
-    while ((c = getchar()) != '\n' && c != EOF)
+    while ((c = getchar()) != '\n' && c != EOF)//目标时换行
     {
         // 读取并丢弃字符
     }
@@ -124,7 +132,7 @@ void start()
 
 void initFood()
 {
-    int valid = 0;
+    int valid = 0;//定义flag变量以判断是否重叠
     while (!valid)
     {
         // 确保食物生成在墙内（留出墙的位置）
@@ -164,6 +172,7 @@ void showUI()
     coord.Y = ly;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
     putchar(' ');
+    
     // 显示蛇的位置
     for (int i = 0; i < snake.size; i++)
     {
@@ -179,6 +188,7 @@ void showUI()
             putchar('*'); // 蛇身
         }
     }
+    
     // 显示食物位置
     coord.X = food[0];
     coord.Y = food[1];
@@ -193,6 +203,38 @@ void showUI()
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
         putchar('X');
     }
+
+    // 显示分数（使用合理坐标）
+    coord.X = high + 2;  // 在游戏区域右侧显示
+    coord.Y = 1;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+    printf("分数: %d", score);
+    
+    // 如果需要显示游戏规则，使用较小的坐标值
+    coord.X = high + 2;  // 游戏区域右侧
+    coord.Y = 3;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+    printf("游戏规则:\n");
+    
+    coord.X = high + 2;
+    coord.Y = 4;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+    printf("W/S/A/D移动\n");
+    
+    coord.X = high + 2;
+    coord.Y = 5;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+    printf("#食物 +长度\n");
+    
+    coord.X = high + 2;
+    coord.Y = 6;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+    printf("X陷阱 -失败\n");
+    
+    coord.X = high + 2;
+    coord.Y = 7;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+    printf("按Q保存退出\n");
 }
 
 void playGame()
@@ -231,6 +273,10 @@ void playGame()
         case 's':
             dx = 0;
             dy = 1;
+            break;
+        case 'q':
+        case 'Q':
+            save();
             break;
         }
 
@@ -292,7 +338,7 @@ void playGame()
             score++;
             initTrap(score); // 随着分数增加，生成更多陷阱
         }
-        Sleep(300);
+        Sleep(300);//代表帧数
         // system("cls");
     }
 
@@ -461,8 +507,8 @@ void query()
 
 void about()
 {
-    printf("about us");
-    printf("==========================================================\n");
+    //printf("about us");
+    printf("\n==========================================================\n");
     printf("这里是一些关于项目的一些链接，输入序号或者Ctrl+单机链接即可跳转\n");
     printf("1.GitHub地址：https://github.com/xunfen\n");
     printf("2.Gitee地址：https://gitee.com/xunfen250\n");
@@ -493,6 +539,170 @@ void about()
             main();
         }
     }
+}
+
+void save()
+{
+    FILE *fp;
+
+    //如果在同意文件夹下的二级文件夹下的文件哪怕是w只读(如果文件不存在则创建新文件)依旧会返回NULL，故此处判断是否存在，如不存在则创建文件
+    FILE *check_snake = fopen("./data/snake.ini", "r");
+    FILE *check_food = fopen("./data/food.ini", "r");
+    FILE *check_trap = fopen("./data/trap.ini", "r");
+    
+    if (check_snake == NULL || check_food == NULL || check_trap == NULL) {
+        // 关闭已打开的文件
+        if(check_snake) fclose(check_snake);
+        if(check_food) fclose(check_food);
+        if(check_trap) fclose(check_trap);
+        
+        // 创建data目录
+        system("if not exist data mkdir data");
+    } else {
+        // 如果文件都存在，则关闭检查用的文件指针
+        fclose(check_snake);
+        fclose(check_food);
+        fclose(check_trap);
+    }
+    
+    // 保存蛇
+    fp = fopen("./data/snake.ini", "w");
+    if (fp == NULL)
+    {
+        printf("保存蛇数据失败！\n");
+        return;
+    }
+    fprintf(fp, "[Snake]\n");
+    fprintf(fp, "Size=%d\n", snake.size);//大小
+    fprintf(fp, "Score=%d\n", score);//目前分数
+    fprintf(fp, "X=%d\n", dx);//蛇头x坐标
+    fprintf(fp, "Y=%d\n", dy);//蛇头y坐标
+    fprintf(fp, "[Body]\n");//循环读取身体以保存身体数据
+    for (int i = 0; i < snake.size; i++)
+    {
+        fprintf(fp, "Part%d=%d,%d\n", i, snake.body[i].x, snake.body[i].y);
+    }
+    fclose(fp);
+    
+    // 保存食物
+    fp = fopen("./data/food.ini", "w");
+    if (fp == NULL)
+    {
+        printf("保存食物数据失败！\n");
+        return;
+    }
+    fprintf(fp, "[Food]\n");
+    fprintf(fp, "X=%d\n", food[0]);
+    fprintf(fp, "Y=%d\n", food[1]);
+    fclose(fp);
+    
+    // 保存陷阱
+    fp = fopen("./data/trap.ini", "w");
+    if (fp == NULL)
+    {
+        printf("保存陷阱数据失败！\n");
+        return;
+    }
+    fprintf(fp, "[Traps]\n");
+    fprintf(fp, "Count=%d\n", trapNum);
+    for (int i = 0; i < trapNum; i++)
+    {
+        fprintf(fp, "Trap%d=%d,%d\n", i, traps[i].x, traps[i].y);//循环读取陷阱以保存陷阱数据
+    }
+    fclose(fp);
+    
+    printf("游戏数据保存成功！\n");
+    printf("按任意键返回主菜单...");
+    _getch();
+    clearScreen();
+    main();
+}
+
+void load() {
+    //判断本地文件是否存在
+    FILE *snakeD = fopen("./data/snake.ini", "r");
+    FILE *foodD = fopen("./data/food.ini", "r");
+    FILE *trapD = fopen("./data/trap.ini", "r");
+    if (snakeD == NULL || foodD == NULL || trapD == NULL) {
+        system("color 4");
+        printf("游戏数据不存在！\n");
+        if(snakeD) fclose(snakeD);
+        if(foodD) fclose(foodD);
+        if(trapD) fclose(trapD);
+        printf("请按任意键返回主菜单...");
+        _getch();
+        clearScreen();
+        system("color 7");
+        main();
+    }
+    
+    //回复颜色显示
+    system("color 7");
+
+    // 读取食物
+    system("color 2");
+    FILE *fp = fopen("./data/food.ini", "r");
+    if (fp == NULL)
+    {
+        printf("读取食物数据失败！\n按任意键返回！\n");
+        _getch();
+        system("color 7");
+        main();        
+    }
+    fscanf(fp, "%d %d", &food[0], &food[1]);
+    fclose(fp);
+    printf("食物已加载...\n");
+    Sleep(500);
+    
+    // 读取蛇 
+    system("color 6");
+    fp = fopen("./data/snake.ini", "r");
+    if (fp == NULL)
+    {
+        printf("读取蛇数据失败！\n按任意键返回！\n");
+        _getch();
+        system("color 7");
+        main();
+    }
+    fscanf(fp, "%d %d %d %d", &snake.size, &score, &dx, &dy);
+    for (int i = 0; i < snake.size; i++)
+    {
+        fscanf(fp, "%d %d", &snake.body[i].x, &snake.body[i].y);
+    }
+    fclose(fp);
+    printf("蛇数据已加载...\n");
+    Sleep(500);
+    
+    // 读取陷阱
+    system("color 3");
+    fp = fopen("./data/trap.ini", "r");
+    if (fp == NULL) {
+        printf("读取陷阱数据失败！\n按任意键返回！\n");
+        _getch();
+        system("color 7");
+        main();
+    }
+    fscanf(fp, "%d", &trapNum); 
+    printf("陷阱数量已加载...\n");
+    Sleep(300);
+    for (int i = 0; i < trapNum; i++) {
+        fscanf(fp, "%d %d", &traps[i].x, &traps[i].y);
+    }
+    fclose(fp);
+    printf("陷阱数据已加载...\n");
+    Sleep(500);
+    
+    system("color 7");
+    printf("游戏数据已全部加载完成！\n");
+    
+    // 继续游戏
+    printf("按任意键继续游戏...");
+    _getch();
+    clearScreen();
+    
+    // 添加墙的初始化
+    initWall();
+    playGame();
 }
 
 /***

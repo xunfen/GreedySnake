@@ -39,3 +39,6 @@ void initWall();//初始化墙
 int lx = 0;
 int ly = 0;
 void initTrap(int score);
+
+void save();
+void load();
